@@ -1,3 +1,12 @@
+import random
+import string
+
+def generate_booking_reference():
+    characters = string.ascii_letters + string.digits  # Combines letters and digits
+    reference = ''.join(random.choice(characters) for _ in range(8))  # Generates 8 random characters
+    return reference
+
+
 # Initialize seat layout
 seats = {
     "1A": "F", "2A": "F", "3A": "F",  # Example seats
@@ -17,16 +26,18 @@ def check_availability(seat):#creating a function for checking seats availabilit
 
 def book_seat(seat): #creating a function for booking seats
     if seat in seats and seats[seat] == "F":
-        seats[seat] = "R"
-        return "Seat booked successfully."
+        reference = generate_booking_reference()  # Generate a booking reference
+        seats[seat] = reference  # Store the reference in the seat dictionary
+        return f"Seat booked successfully. Booking reference: {reference}"
     else:
         return "Seat cannot be booked."
 
-def book_multiple_seats(seat_list): #creating a functioon to book multiple seats at once 
+def book_multiple_seats(seat_list): #creating a function to book multiple seats at once 
     for seat in seat_list:
         if seat in seats and seats[seat] == "F":
-            seats[seat] = "R"
-            print(f"Seat {seat} booked successfully.")
+            reference = generate_booking_reference()  # Generating a booking reference
+            seats[seat] = reference  # Store the reference in the seat dictionary
+            print(f"Seat {seat} booked successfully. Booking reference: {reference}")
         else:
             print(f"Seat {seat} cannot be booked.")
 
