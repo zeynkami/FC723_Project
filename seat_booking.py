@@ -1,125 +1,148 @@
-import sqlite3
+import sqlite3 #Importing SQLite library for database operations
+import random #Importing random module to generate random values
+import string #Importing string module to work with string constants
 
-# Connect to the SQLite database (or create it if it doesn't exist)
-conn = sqlite3.connect('bookings.db')
-cursor = conn.cursor()
+class DatabaseManager: #Class to manage database operations for bookings
+    def __init__(self, db_name='bookings.db'): #Initializing the database connection and create the bookings table
+        self.conn = sqlite3.connect(db_name) #Connecting to the specified SQLite database
+        self.cursor = self.conn.cursor() #Creating a cursor for the SQL commands
+        self.create_table() #to create the bookings table if it doesn't exist
 
-# Create the bookings table if it doesn't already exist
-cursor.execute('''
-    CREATE TABLE IF NOT EXISTS bookings (
-        reference TEXT PRIMARY KEY,
-        passport TEXT,
-        first_name TEXT,
-        last_name TEXT,
-        seat TEXT
-    )
-''')
-conn.commit()  # Save the changes to the database
+    def create_table(self): #creating a function for showing whats booked 
+        self.cursor.execute(  #to create the bookings table
+            "CREATE TABLE IF NOT EXISTS bookings ("
+            "reference TEXT PRIMARY KEY,"
+            "passport TEXT,"
+            "first_name TEXT,"
+            "last_name TEXT,"
+            "seat TEXT)"
+        )
+        self.conn.commit()
 
-import random
-import string
+    def insert_booking(self, reference, passport, first_name, last_name, seat):
+        self.cursor.execute(  #to insert a new booking record into the database
+            "INSERT INTO bookings (reference, passport, first_name, last_name, seat) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (reference, passport, first_name, last_name, seat)
+        )
+        self.conn.commit()
 
-def generate_booking_reference():
-    characters = string.ascii_letters + string.digits  # Combines letters and digits
-    reference = ''.join(random.choice(characters) for _ in range(8))  # Generates 8 random characters
-    return reference
+    def delete_booking(self, reference):
+        self.cursor.execute( #to delete a booking from the database using reference ID
+            "DELETE FROM bookings WHERE reference = ?",
+            (reference,)
+        )
+        self.conn.commit()
 
 
-# Initialize seat layout
-seats = {
-    "1A": "F", "2A": "F", "3A": "F",  # Example seats
-    "1B": "F", "2B": "F", "3B": "F",
-    "X1": "X", "X2": "X",  # Aisles
-    "S1": "S", "S2": "S"   # Storage areas
-}
+class SeatManager: #Initializing the database connection and create the bookings table
+    def __init__(self):
+        self.seats = {
+            "1A": "F", "2A": "F", "3A": "F",
+            "1B": "F", "2B": "F", "3B": "F",
+            "X1": "X", "X2": "X",
+            "S1": "S", "S2": "S"
+        }
 
-def check_availability(seat):#creating a function for checking seats availability
-    if seat in seats:
-        if seats[seat] == "F":
-            return "Seat is available."
-        else:
-            return "Seat is not available."
-    else:
+    def check_availability(self, seat): #creating a function for checking seats availability
+        if seat in self.seats:
+            return "Seat is available." if self.seats[seat] == "F" else "Seat is not available."
         return "Invalid seat."
 
-def book_seat(seat, passport, first_name, last_name):#creating a function for booking seats
-    if seat in seats and seats[seat] == "F":
-        reference = generate_booking_reference()  # Generate a booking reference
-        seats[seat] = reference  # Update the seat dictionary with the reference
+    def mark_seat_booked(self, seat, reference):#creating a function for booking seats
+        self.seats[seat] = reference
 
-        # Insert booking details into the database
-        cursor.execute('''
-            INSERT INTO bookings (reference, passport, first_name, last_name, seat)
-            VALUES (?, ?, ?, ?, ?)
-        ''', (reference, passport, first_name, last_name, seat))
-        conn.commit()  # Save the changes to the database
+    def mark_seat_free(self, seat):
+        self.seats[seat] = "F"
 
-        return f"Seat booked successfully. Reference: {reference}"
-    else:
+    def get_seat_reference(self, seat):
+        return self.seats[seat]
+
+    def is_seat_free(self, seat):
+        return self.seats.get(seat) == "F"
+
+    def is_seat_valid(self, seat):
+        return seat in self.seats
+
+    def show_status(self):
+        for seat, status in self.seats.items():
+            print(f"{seat}: {status}")
+
+
+class ReferenceGenerator:
+    def generate():
+        characters = string.ascii_letters + string.digits #Combining letters and digits
+        return ''.join(random.choice(characters) for _ in range(8)) #Generating 8 random characters
+
+
+class BookingSystem: #Initializing the database connection and create the bookings table
+    def __init__(self):
+        self.db = DatabaseManager()
+        self.seat_manager = SeatManager()
+
+    def book_seat(self, seat, passport, first_name, last_name):#creating a function for booking seat
+        if self.seat_manager.is_seat_valid(seat) and self.seat_manager.is_seat_free(seat):
+            reference = ReferenceGenerator.generate() #Generating a booking reference
+            self.seat_manager.mark_seat_booked(seat, reference)
+            self.db.insert_booking(reference, passport, first_name, last_name, seat)  #Inserting booking details into the database
+            return f"Seat booked successfully. Reference: {reference}"
         return "Seat cannot be booked."
 
-def book_multiple_seats(seat_list): #creating a function to book multiple seats at once 
-    for seat in seat_list:
-        if seat in seats and seats[seat] == "F":
-            reference = generate_booking_reference()  # Generating a booking reference
-            seats[seat] = reference  # Store the reference in the seat dictionary
-            print(f"Seat {seat} booked successfully. Booking reference: {reference}")
-        else:
-            print(f"Seat {seat} cannot be booked.")
+    def book_multiple_seats(self, seat_list, passport, first_name, last_name):#creating a function to book multiple seats at once 
+        for seat in seat_list:
+            print(self.book_seat(seat.strip(), passport, first_name, last_name))
 
-def free_seat(seat):#creating a function for freeing seats
-    if seat in seats and seats[seat] != "F":  # Check if the seat is booked
-        reference = seats[seat]  # Get the booking reference
-        seats[seat] = "F"  # Mark the seat as free
-
-        # Remove the booking details from the database
-        cursor.execute('''
-            DELETE FROM bookings WHERE reference = ?
-        ''', (reference,))
-        conn.commit()  # Save the changes to the database
-
-        return "Seat freed successfully."
-    else:
+    def free_seat(self, seat):#creating a function for freeing seats
+        if self.seat_manager.is_seat_valid(seat) and not self.seat_manager.is_seat_free(seat):
+            reference = self.seat_manager.get_seat_reference(seat)
+            self.seat_manager.mark_seat_free(seat)
+            self.db.delete_booking(reference)
+            return "Seat freed successfully."
         return "Seat cannot be freed."
 
-def show_booking_status(): #creating a function for showing whats booked 
-    for seat, status in seats.items():
-        print(f"{seat}: {status}")
+    def check_availability(self, seat):
+        return self.seat_manager.check_availability(seat)
 
-while True: #creating a menu with the options
-    print("\nMenu:")
-    print("1. Check availability of seat")
-    print("2. Book a seat")
-    print("3. Book multiple seats")
-    print("4. Free a seat")
-    print("5. Show booking status")
-    print("6. Exit")
+    def show_booking_status(self):
+        self.seat_manager.show_status()
 
-    choice = input("Enter your choice: ") #getting choice
+    def menu(self): #creating a menu with the options
+        while True:
+            print("\nMenu:")
+            print("1. Check availability of seat")
+            print("2. Book a seat")
+            print("3. Book multiple seats")
+            print("4. Free a seat")
+            print("5. Show booking status")
+            print("6. Exit")
 
-#doing whats choosen from menu using the functions
-    if choice == "1":
-        seat = input("Enter seat number: ")
-        print(check_availability(seat))
-    elif choice == "2":
-        seat = input("Enter seat number: ")
-        passport = input("Enter passport number: ")
-        first_name = input("Enter first name: ")
-        last_name = input("Enter last name: ")
-        print(book_seat(seat, passport, first_name, last_name))
-    elif choice == "3":
-        seat_list = input("Enter seat numbers (comma-separated, e.g., 1A,2B,3C): ").split(",")
-        passport = input("Enter passport number: ")
-        first_name = input("Enter first name: ")
-        last_name = input("Enter last name: ")
-        for seat in seat_list:
-            print(book_seat(seat.strip(), passport, first_name, last_name))
-    elif choice == "4":
-        seat = input("Enter seat number: ")
-        print(free_seat(seat))
-    elif choice == "5":
-        show_booking_status()
-    elif choice == "6":
-        break
-    else:
-        print("Invalid choice. Please try again.")
+            choice = input("Enter your choice: ") #getting choice
+            #doing whats choosen from menu using the functions
+            if choice == "1":
+                seat = input("Enter seat number: ")
+                print(self.check_availability(seat))
+            elif choice == "2":
+                seat = input("Enter seat number: ")
+                passport = input("Enter passport number: ")
+                first_name = input("Enter first name: ")
+                last_name = input("Enter last name: ")
+                print(self.book_seat(seat, passport, first_name, last_name))
+            elif choice == "3":
+                seat_list = input("Enter seat numbers (comma-separated, e.g., 1A,2B,3C): ").split(",")
+                passport = input("Enter passport number: ")
+                first_name = input("Enter first name: ")
+                last_name = input("Enter last name: ")
+                self.book_multiple_seats(seat_list, passport, first_name, last_name)
+            elif choice == "4":
+                seat = input("Enter seat number: ")
+                print(self.free_seat(seat))
+            elif choice == "5":
+                self.show_booking_status()
+            elif choice == "6":
+                break
+            else:
+                print("Invalid choice. Please try again.")
+
+if __name__ == "__main__":
+    system = BookingSystem()
+    system.menu()
