@@ -128,7 +128,7 @@ class BookingSystem: #Initializing the database connection and create the bookin
                 last_name = input("Enter last name: ")
                 print(self.book_seat(seat, passport, first_name, last_name))
             elif choice == "3":
-                seat_list = input("Enter seat numbers (comma-separated, e.g., 1A,2B,3C): ").split(",")
+                seat_list = input("Enter seat numbers (comma-separated, e.g., 1A,2B,3B): ").split(",")
                 passport = input("Enter passport number: ")
                 first_name = input("Enter first name: ")
                 last_name = input("Enter last name: ")
